@@ -1,14 +1,9 @@
 package master;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class Deploy {
@@ -36,46 +31,6 @@ public class Deploy {
         return tokenize_corpus;
     }
 
-    public static boolean sequentialProcessLauncher(String command) {
-
-        ProcessBuilder builder = new ProcessBuilder(command.split(" "));
-        builder.redirectErrorStream(true);
-        Process process = null;
-        try {
-            process = builder.start();
-        } catch (IOException e1) {
-            e1.printStackTrace();
-        }
-        BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-
-        boolean running = true;
-        boolean tooLong = false;
-        while (running) {
-            try {
-                // Wait For retourne vrai si le programme est arrete
-                boolean stillRunning = !process.waitFor(5, TimeUnit.SECONDS);
-                // On lit la sortie standard. Si on a eu quelque chose, on continue
-                if (reader.ready()) {
-                    // On a du monde dans le buffer. On les recupere.
-                    // Si on ne veut pas les récuperer, on peut faire un "reset"
-                    // reader.reset();
-                    while (reader.ready()) {
-                        int c = reader.read();
-                        System.out.print((char) c);
-                    }
-                } else if(stillRunning) {
-                    // Le process n'a rien écris pendant les 5 secondes. On le tue
-                    tooLong = true;
-                    process.destroy();
-                }
-                running = stillRunning && !tooLong;
-            } catch (IOException | InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-        return !tooLong;
-    }
-
     static class MonRunnable implements Runnable {
 
         int position;
@@ -90,7 +45,7 @@ public class Deploy {
 
         @Override
         public void run() {
-            boolean b = sequentialProcessLauncher(command);
+            boolean b = Master.sequentialProcessLauncher(command);
             values[position] = b;
             System.out.println("Valeur du retour: " + b);
         }
@@ -98,16 +53,43 @@ public class Deploy {
 
     public static void main(String[] args) throws InterruptedException {
         ArrayList<String> hostnames = Deploy.read_file(args[0]);
-        ArrayList<String> commands = new ArrayList<>();
+        ArrayList<String> health_checks = new ArrayList<>();
+        ArrayList<String> create_dirs = new ArrayList<>();
+        ArrayList<String> check_dir = new ArrayList<>();
+        ArrayList<String> copy_jar = new ArrayList<>();
 
+        // Create list of commands for each machines
+        assert hostnames != null;
         for (String hostname:hostnames){
-            commands.add("ssh " + hostname + " hostname");
+            health_checks.add("ssh acamara@" + hostname + " hostname");
+            create_dirs.add("ssh acamara@" + hostname + " if test ! -d /tmp/acamara; then mkdir -p /tmp/acamara; fi");
+            check_dir.add("ssh acamara@" + hostname + " ls /tmp/acamara");
+            copy_jar.add("scp /home/axel/IdeaProjects/mapreduce-from-scratch/out/artifacts/mapreduce_from_scratch_jar/mapreduce-from-scratch.jar acamara@" + hostname + ":/tmp/acamara/slave.jar");
         }
-        List<Boolean> returnValue = commands.parallelStream()
-                .map(Deploy::sequentialProcessLauncher)
+
+        // Apply health checker
+        List<Boolean> returnValue = health_checks.parallelStream()
+                .map(Master::sequentialProcessLauncher)
                 .collect(Collectors.toCollection(ArrayList::new));
 
-        System.out.println(returnValue);
+        // Check all machine are alive and deploy jar
+        boolean isNodesOk = returnValue.stream().allMatch(x -> x);
+        if (isNodesOk) {
+            create_dirs.parallelStream().forEach(Master::sequentialProcessLauncher);
 
+            // wait for directories creation and check the creation
+            Thread.sleep(3000);
+            returnValue = check_dir.parallelStream()
+                    .map(Master::sequentialProcessLauncher)
+                    .collect(Collectors.toCollection(ArrayList::new));
+
+            if (returnValue.stream().allMatch(x -> x)){
+                copy_jar.parallelStream().forEach(Master::sequentialProcessLauncher);
+            } else{
+                System.out.println("Something went wrong during the directories creation");
+            }
+        } else {
+            System.out.println("Not all nodes are safe, please check connection");
+        }
     }
 }
