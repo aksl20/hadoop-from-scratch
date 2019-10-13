@@ -1,9 +1,14 @@
 package master;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class Deploy {
@@ -31,23 +36,61 @@ public class Deploy {
         return tokenize_corpus;
     }
 
-    static class MonRunnable implements Runnable {
+    static class ProcessLauncher {
+        Process process;
+        Integer timeout;
+        String[] command;
+        boolean error = false;
+        Master.ThreadReaderStream input_stream;
+        Master.ThreadReaderStream error_stream;
 
-        int position;
-        boolean values[];
-        String command;
+        ProcessLauncher(String command, Integer timeout) {
+            this.timeout = timeout;
+            this.command = command.split(" ");
+            ProcessBuilder builder = new ProcessBuilder(this.command);
+            try {
+                this.process = builder.start();
+            } catch (IOException e1) {
+                e1.printStackTrace();
+            }
+            assert process != null;
+            input_stream = new Master.ThreadReaderStream(process.getInputStream());
+            error_stream = new Master.ThreadReaderStream(process.getErrorStream());
+            input_stream.start();
+            error_stream.start();
+        }
 
-        public MonRunnable(String command, boolean values[], int pos) {
-            position = pos;
-            this.values = values;
-            this.command = command;
+        boolean launch_process() throws InterruptedException {
+            String line;
+            while (((line = input_stream.queue.poll(this.timeout, TimeUnit.SECONDS)) != null)) {
+                System.out.print(line + "\n");
+            }
+            while (((line = error_stream.queue.poll()) != null)) {
+                System.out.print(line + "\n");
+                error = true;
+            }
+            return !error;
+        }
+    }
+
+    static class ThreadReaderStream extends Thread {
+        LinkedBlockingQueue<String> queue = new LinkedBlockingQueue<>();
+        BufferedReader reader;
+
+        ThreadReaderStream(InputStream stream) {
+            this.reader = new BufferedReader(new InputStreamReader(stream));
         }
 
         @Override
         public void run() {
-            boolean b = Master.sequentialProcessLauncher(command);
-            values[position] = b;
-            System.out.println("Valeur du retour: " + b);
+            try {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    queue.put(line);
+                }
+            } catch (IOException | InterruptedException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -69,22 +112,42 @@ public class Deploy {
 
         // Apply health checker
         List<Boolean> returnValue = health_checks.parallelStream()
-                .map(Master::sequentialProcessLauncher)
-                .collect(Collectors.toCollection(ArrayList::new));
+                .map(command -> {
+                    try {
+                        return new ProcessLauncher(command, 5).launch_process();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                        return false;
+                    }}).collect(Collectors.toCollection(ArrayList::new));
 
         // Check all machine are alive and deploy jar
         boolean isNodesOk = returnValue.stream().allMatch(x -> x);
         if (isNodesOk) {
-            create_dirs.parallelStream().forEach(Master::sequentialProcessLauncher);
+            create_dirs.forEach(command -> {
+                try {
+                    new ProcessLauncher(command, 2).launch_process();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }});
 
             // wait for directories creation and check the creation
             Thread.sleep(3000);
             returnValue = check_dir.parallelStream()
-                    .map(Master::sequentialProcessLauncher)
-                    .collect(Collectors.toCollection(ArrayList::new));
+                    .map(command -> {
+                        try {
+                            return new ProcessLauncher(command, 2).launch_process();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                            return false;
+                        }}).collect(Collectors.toCollection(ArrayList::new));
 
             if (returnValue.stream().allMatch(x -> x)){
-                copy_jar.parallelStream().forEach(Master::sequentialProcessLauncher);
+                copy_jar.parallelStream().forEach(command -> {
+                    try {
+                        new ProcessLauncher(command, 2).launch_process();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }});
             } else{
                 System.out.println("Something went wrong during the directories creation");
             }
