@@ -3,11 +3,11 @@ package master;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Collectors;
 
-public class Deploy {
-
+public class Clean {
     public static ArrayList<String> read_file(String filename) {
         ArrayList<String> lines = new ArrayList<>();
         try {
@@ -56,40 +56,21 @@ public class Deploy {
 
     public static void main(String[] args) throws InterruptedException {
         ArrayList<String> hostnames = Deploy.read_file(args[0]);
-        ArrayList<String> health_checks = new ArrayList<>();
-        ArrayList<String> create_dirs = new ArrayList<>();
-        ArrayList<String> check_dir = new ArrayList<>();
-        ArrayList<String> copy_jar = new ArrayList<>();
+        ArrayList<String> remove_folder = new ArrayList<>();
+        ArrayList<String> check_remove = new ArrayList<>();
 
         // Create list of commands for each machines
         assert hostnames != null;
-        for (String hostname : hostnames) {
-            health_checks.add("ssh -o StrictHostKeyChecking=no acamara@" + hostname + " hostname");
-            create_dirs.add("ssh acamara@" + hostname + " if test ! -d /tmp/acamara; then mkdir -p /tmp/acamara; fi");
-            check_dir.add("ssh acamara@" + hostname + " ls /tmp/acamara");
-            copy_jar.add("scp /home/axel/IdeaProjects/mapreduce-from-scratch/jar/slave.jar acamara@" + hostname + ":/tmp/acamara/slave.jar");
+        for (String hostname : hostnames){
+            remove_folder.add("ssh acamara@" + hostname + " rm -rf /tmp/acamara");
+            check_remove.add("ssh acamara@" + hostname + " ls /tmp/acamara");
         }
+
 
         // Apply health checker
-        List<Boolean> returnValue = launch_actions_with_return(health_checks);
-
-        // Check all machine are alive and deploy jar
-        boolean isNodesOk = returnValue.stream().allMatch(x -> x);
-        if (isNodesOk) {
-            launch_actions_without_return(create_dirs);
-
-            // wait for directories creation and check the creation
-            Thread.sleep(3000);
-            returnValue = launch_actions_with_return(check_dir);
-
-            // if all directories are created, deploy jar file
-            if (returnValue.stream().allMatch(x -> x)) {
-                launch_actions_without_return(copy_jar);
-            } else {
-                System.out.println("Something went wrong during the directories creation");
-            }
-        } else {
-            System.out.println("Not all nodes are safe, please check connection");
-        }
+        List<Boolean> returnValue = launch_actions_with_return(remove_folder);
+        System.out.println(returnValue);
+        returnValue = launch_actions_with_return(check_remove);
+        System.out.println(returnValue);
     }
 }

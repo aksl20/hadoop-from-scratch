@@ -14,7 +14,6 @@ public class Master {
         Process process;
         Integer timeout;
         String[] command;
-        boolean error = false;
         ThreadReaderStream input_stream;
         ThreadReaderStream error_stream;
 
@@ -34,22 +33,41 @@ public class Master {
             error_stream.start();
         }
 
-        Integer launch_process() throws InterruptedException {
+        boolean launch_process() {
             String line;
             boolean running = true;
-            while(running){
-
-                while (((line = input_stream.queue.poll(this.timeout, TimeUnit.SECONDS)) != null)) {
-                    System.out.print(line + "\n");
+            boolean tooLong = false;
+            while (running) {
+                try {
+                    // Wait For retourne vrai si le programme est arrete
+                    boolean stillRunning = !process.waitFor(5, TimeUnit.SECONDS);
+                    // On lit la sortie standard. Si on a eu quelque chose, on continue
+                    // ​
+                    if (!input_stream.queue.isEmpty()) {
+                        // On a du monde dans le buffer. On les recupere.
+                        // Si on ne veut pas les récuperer, on peut faire un "reset"
+                        // reader.reset();
+                        while (((line = input_stream.queue.poll()) != null)) {
+                            System.out.println(line);
+                        }
+                    } else if (!error_stream.queue.isEmpty()) {
+                        // On a du monde dans le buffer. On les recupere.
+                        // Si on ne veut pas les récuperer, on peut faire un "reset"
+                        // reader.reset();
+                        while (((line = error_stream.queue.poll()) != null)) {
+                            System.out.println(line);
+                        }
+                    } else if (stillRunning) {
+                        // Le process n'a rien écris pendant les 5 secondes. On le tue
+                        tooLong = true;
+                        process.destroy();
+                    }
+                    running = stillRunning && !tooLong;
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
-                while (((line = error_stream.queue.poll()) != null)) {
-                    System.out.print(line + "\n");
-                }
-                // Wait For retourne vrai si le programme est arrete
-
-                running = !process.waitFor(5, TimeUnit.SECONDS);
             }
-            return process.waitFor();
+            return !tooLong;
         }
     }
 
@@ -75,27 +93,6 @@ public class Master {
     }
 
 
-    public static void main(String[] args) throws InterruptedException {
-        // Deploy the
-        String[] pc = new String[]{"java -jar /home/axel/IdeaProjects/mapreduce-from-scratch/out/artifacts/mapreduce_from_scratch_jar/mapreduce-from-scratch.jar /home/axel/IdeaProjects/mapreduce-from-scratch/data/deontologie_police_nationale.txt"};
-        // Une facon de lancer les threads, sans attendre de retour de leur part:
-        Arrays.asList(pc).parallelStream()
-                .forEach(command -> {
-                    try {
-                        new ProcessLauncher(command, 5).launch_process();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }});
-
-        /* List<Boolean> returnValue = Arrays.asList(pc).parallelStream()
-                                    .map(command -> {
-                                        try {
-                                            return new ProcessLauncher(command, 5).launch_process();
-                                        } catch (InterruptedException e) {
-                                            e.printStackTrace();
-                                            return false;
-                                        }}).collect(Collectors.toCollection(ArrayList::new));
-        System.out.println(returnValue); */
-    }
+    public static void main(String[] args) throws InterruptedException {}
 }
 
