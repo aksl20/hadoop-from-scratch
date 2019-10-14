@@ -43,6 +43,7 @@ public class Master {
                 System.out.print(line + "\n");
                 error = true;
             }
+            process.destroy();
             return !error;
         }
     }

@@ -1,14 +1,9 @@
 package master;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class Deploy {
@@ -36,64 +31,6 @@ public class Deploy {
         return tokenize_corpus;
     }
 
-    static class ProcessLauncher {
-        Process process;
-        Integer timeout;
-        String[] command;
-        boolean error = false;
-        Master.ThreadReaderStream input_stream;
-        Master.ThreadReaderStream error_stream;
-
-        ProcessLauncher(String command, Integer timeout) {
-            this.timeout = timeout;
-            this.command = command.split(" ");
-            ProcessBuilder builder = new ProcessBuilder(this.command);
-            try {
-                this.process = builder.start();
-            } catch (IOException e1) {
-                e1.printStackTrace();
-            }
-            assert process != null;
-            input_stream = new Master.ThreadReaderStream(process.getInputStream());
-            error_stream = new Master.ThreadReaderStream(process.getErrorStream());
-            input_stream.start();
-            error_stream.start();
-        }
-
-        boolean launch_process() throws InterruptedException {
-            String line;
-            while (((line = input_stream.queue.poll(this.timeout, TimeUnit.SECONDS)) != null)) {
-                System.out.print(line + "\n");
-            }
-            while (((line = error_stream.queue.poll()) != null)) {
-                System.out.print(line + "\n");
-                error = true;
-            }
-            return !error;
-        }
-    }
-
-    static class ThreadReaderStream extends Thread {
-        LinkedBlockingQueue<String> queue = new LinkedBlockingQueue<>();
-        BufferedReader reader;
-
-        ThreadReaderStream(InputStream stream) {
-            this.reader = new BufferedReader(new InputStreamReader(stream));
-        }
-
-        @Override
-        public void run() {
-            try {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    queue.put(line);
-                }
-            } catch (IOException | InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
     public static void main(String[] args) throws InterruptedException {
         ArrayList<String> hostnames = Deploy.read_file(args[0]);
         ArrayList<String> health_checks = new ArrayList<>();
@@ -114,7 +51,7 @@ public class Deploy {
         List<Boolean> returnValue = health_checks.parallelStream()
                 .map(command -> {
                     try {
-                        return new ProcessLauncher(command, 5).launch_process();
+                        return new Master.ProcessLauncher(command, 5).launch_process();
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                         return false;
@@ -125,7 +62,7 @@ public class Deploy {
         if (isNodesOk) {
             create_dirs.forEach(command -> {
                 try {
-                    new ProcessLauncher(command, 2).launch_process();
+                    new Master.ProcessLauncher(command, 2).launch_process();
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }});
@@ -135,7 +72,7 @@ public class Deploy {
             returnValue = check_dir.parallelStream()
                     .map(command -> {
                         try {
-                            return new ProcessLauncher(command, 2).launch_process();
+                            return new Master.ProcessLauncher(command, 2).launch_process();
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                             return false;
@@ -144,7 +81,7 @@ public class Deploy {
             if (returnValue.stream().allMatch(x -> x)){
                 copy_jar.parallelStream().forEach(command -> {
                     try {
-                        new ProcessLauncher(command, 2).launch_process();
+                        new Master.ProcessLauncher(command, 2).launch_process();
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }});
