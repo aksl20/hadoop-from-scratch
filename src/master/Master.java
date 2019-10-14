@@ -34,17 +34,22 @@ public class Master {
             error_stream.start();
         }
 
-        boolean launch_process() throws InterruptedException {
+        Integer launch_process() throws InterruptedException {
             String line;
-            while (((line = input_stream.queue.poll(this.timeout, TimeUnit.SECONDS)) != null)) {
-                System.out.print(line + "\n");
+            boolean running = true;
+            while(running){
+
+                while (((line = input_stream.queue.poll(this.timeout, TimeUnit.SECONDS)) != null)) {
+                    System.out.print(line + "\n");
+                }
+                while (((line = error_stream.queue.poll()) != null)) {
+                    System.out.print(line + "\n");
+                }
+                // Wait For retourne vrai si le programme est arrete
+
+                running = !process.waitFor(5, TimeUnit.SECONDS);
             }
-            while (((line = error_stream.queue.poll()) != null)) {
-                System.out.print(line + "\n");
-                error = true;
-            }
-            process.destroy();
-            return !error;
+            return process.waitFor();
         }
     }
 
