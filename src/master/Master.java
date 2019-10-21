@@ -116,6 +116,7 @@ public class Master {
         ArrayList<String> create_dirs = new ArrayList<>();
         ArrayList<String> check_dir = new ArrayList<>();
         ArrayList<String> run_copy = new ArrayList<>();
+        ArrayList<String> run_jar = new ArrayList<>();
         Random rand = new Random();
 
         for (String file:files){
@@ -124,6 +125,7 @@ public class Master {
             create_dirs.add("ssh acamara@" + slave + " if test ! -d " + args[2] + "; then mkdir -p " + args[2] + "; fi");
             run_copy.add("scp -r " + file + " acamara@" + slave + ":" + args[2]);
             check_dir.add("ssh acamara@" + slave + " ls " + args[2]);
+            run_jar.add("ssh acamara@" + slave + " java -jar /tmp/acamara/map.jar 0 " + file);
         }
         // Apply health checker
         List<Boolean> returnValue = Deploy.launch_actions_with_return(health_checks);
@@ -146,6 +148,13 @@ public class Master {
         } else {
             System.out.println("Not all nodes are safe, please check connection");
         }
+
+        Deploy.deploy("/home/axel/IdeaProjects/mapreduce-from-scratch/data/hostnames.txt",
+                "/home/axel/IdeaProjects/mapreduce-from-scratch/jar/map.jar", "/tmp/acamara/");
+
+        Deploy.launch_actions_without_return(run_jar);
+
+        System.out.println("MAP FINISHED");
     }
 }
 

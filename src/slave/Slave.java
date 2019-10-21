@@ -113,6 +113,7 @@ public class Slave{
             File split_file = new File(args[1]);
             String num = args[1].replaceAll("[^\\d]", "");
             File map_directory = new File(new File(split_file.getParent()).getParent() + "/maps");
+            System.out.println(map_directory);
             if (!map_directory.exists()){
                 boolean result = map_directory.mkdir();
                 if (!result){

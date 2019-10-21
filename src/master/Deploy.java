@@ -67,7 +67,7 @@ public class Deploy {
             health_checks.add("ssh -o StrictHostKeyChecking=no acamara@" + hostname + " hostname");
             create_dirs.add("ssh acamara@" + hostname + " if test ! -d " + remote_path + "; then mkdir -p " + remote_path + "; fi");
             check_dir.add("ssh acamara@" + hostname + " ls /tmp/acamara");
-            run_copy.add("scp -r " + host_path + "acamara@" + hostname + ":" + remote_path);
+            run_copy.add("scp -r " + host_path + " acamara@" + hostname + ":" + remote_path);
         }
 
         // Apply health checker
