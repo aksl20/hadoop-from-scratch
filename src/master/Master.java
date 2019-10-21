@@ -67,7 +67,7 @@ public class Master {
                     e.printStackTrace();
                 }
             }
-            return !tooLong;
+            return !tooLong && process.exitValue()==0;
         }
     }
 
@@ -93,6 +93,10 @@ public class Master {
     }
 
 
-    public static void main(String[] args) throws InterruptedException {}
+    public static void main(String[] args) throws InterruptedException {
+        Boolean return_value = Deploy.deploy("data/hostnames.txt", "/tmp/acamara/splits",
+                "/tmp/acamara/");
+        System.out.println(return_value);
+    }
 }
 

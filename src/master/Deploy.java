@@ -54,20 +54,18 @@ public class Deploy {
         return returnValue;
     }
 
-    public static void main(String[] args) throws InterruptedException {
-        ArrayList<String> hostnames = Deploy.read_file(args[0]);
+    public static Boolean deploy(String path_to_hostnames, String host_path, String remote_path) throws InterruptedException {
+        ArrayList<String> hostnames = Deploy.read_file(path_to_hostnames);
         ArrayList<String> health_checks = new ArrayList<>();
-        ArrayList<String> create_dirs = new ArrayList<>();
         ArrayList<String> check_dir = new ArrayList<>();
-        ArrayList<String> copy_jar = new ArrayList<>();
+        ArrayList<String> run_copy = new ArrayList<>();
 
         // Create list of commands for each machines
         assert hostnames != null;
         for (String hostname : hostnames) {
             health_checks.add("ssh -o StrictHostKeyChecking=no acamara@" + hostname + " hostname");
-            create_dirs.add("ssh acamara@" + hostname + " if test ! -d /tmp/acamara; then mkdir -p /tmp/acamara; fi");
-            check_dir.add("ssh acamara@" + hostname + " ls /tmp/acamara");
-            copy_jar.add("scp /home/axel/IdeaProjects/mapreduce-from-scratch/jar/slave.jar acamara@" + hostname + ":/tmp/acamara/slave.jar");
+            run_copy.add("scp -pr " + host_path + " acamara@" + hostname + ":" + remote_path);
+            check_dir.add("ssh acamara@" + hostname + " ls " + remote_path);
         }
 
         // Apply health checker
@@ -76,20 +74,27 @@ public class Deploy {
         // Check all machine are alive and deploy jar
         boolean isNodesOk = returnValue.stream().allMatch(x -> x);
         if (isNodesOk) {
-            launch_actions_without_return(create_dirs);
+            launch_actions_without_return(run_copy);
 
             // wait for directories creation and check the creation
             Thread.sleep(3000);
             returnValue = launch_actions_with_return(check_dir);
+            System.out.println(returnValue);
 
             // if all directories are created, deploy jar file
             if (returnValue.stream().allMatch(x -> x)) {
-                launch_actions_without_return(copy_jar);
+                return true;
             } else {
                 System.out.println("Something went wrong during the directories creation");
+                return false;
             }
         } else {
             System.out.println("Not all nodes are safe, please check connection");
+            return false;
         }
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        System.out.println("Hello from deploy!");
     }
 }
