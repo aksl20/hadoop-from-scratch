@@ -111,23 +111,29 @@ public class Master {
 
     public static void main(String[] args) throws InterruptedException {
         ArrayList<String> hostnames = Deploy.read_file(args[0]);
+        Set<String> slaves = new HashSet<>();
         List<String> files = list_directory(args[1]);
         ArrayList<String> health_checks = new ArrayList<>();
         ArrayList<String> create_dirs = new ArrayList<>();
         ArrayList<String> check_dir = new ArrayList<>();
         ArrayList<String> run_copy = new ArrayList<>();
-        ArrayList<String> run_jar = new ArrayList<>();
+        ArrayList<String> run_map = new ArrayList<>();
+        ArrayList<String> run_shuffle = new ArrayList<>();
         ArrayList<String> copy_hostnames_file = new ArrayList<>();
         Random rand = new Random();
 
         for (String file:files){
             String slave = hostnames.get(rand.nextInt(hostnames.size()));
+            slaves.add(slave);
             health_checks.add("ssh -o StrictHostKeyChecking=no acamara@" + slave + " hostname");
             create_dirs.add("ssh acamara@" + slave + " if test ! -d " + args[2] + "; then mkdir -p " + args[2] + "; fi");
             run_copy.add("scp -r " + file + " acamara@" + slave + ":" + args[2]);
             check_dir.add("ssh acamara@" + slave + " ls " + args[2]);
-            run_jar.add("ssh acamara@" + slave + " java -jar /tmp/acamara/map.jar 0 " + file);
+            run_map.add("ssh acamara@" + slave + " java -jar /tmp/acamara/job.jar 0 " + file);
             copy_hostnames_file.add("scp " + args[0] + " acamara@" + slave + ":/tmp/acamara");
+        }
+        for (String slave:slaves){
+            run_shuffle.add("ssh acamara@" + slave + " java -jar /tmp/acamara/job.jar 1 ");
         }
         // Apply health checker
         List<Boolean> returnValue = Deploy.launch_actions_with_return(health_checks);
@@ -151,13 +157,16 @@ public class Master {
             System.out.println("Not all nodes are safe, please check connection");
         }
 
+        // Map
         Deploy.deploy("/home/axel/IdeaProjects/mapreduce-from-scratch/data/hostnames.txt",
-                "/home/axel/IdeaProjects/mapreduce-from-scratch/jar/map.jar", "/tmp/acamara/");
-
-        Deploy.launch_actions_without_return(run_jar);
-        Deploy.launch_actions_without_return(copy_hostnames_file);
-
+                "/home/axel/IdeaProjects/mapreduce-from-scratch/jar/job.jar", "/tmp/acamara/");
+        Deploy.launch_actions_without_return(run_map);
         System.out.println("MAP FINISHED");
+
+        // reduce
+        Deploy.launch_actions_without_return(copy_hostnames_file);
+        Deploy.launch_actions_without_return(run_shuffle);
+        System.out.println("REDUCE FINISHED");
     }
 }
 

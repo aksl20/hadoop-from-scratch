@@ -1,16 +1,14 @@
 package slave;
+
+import master.Master;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
 
 import static java.util.stream.Collectors.*;
@@ -100,12 +98,27 @@ public class Slave{
         }
     }
 
-    public static void write_file(ArrayList<String> word_count, String filename) throws IOException {
-        BufferedWriter writer = new BufferedWriter(new FileWriter(filename));
-        for (String line:word_count){
-            writer.write(line + "\n");
+    public static void write_file(List<String> word_count, String filename, String mode) throws IOException {
+        if (mode.equals("a")){
+            try{
+                FileWriter fstream = new FileWriter(filename,true);
+                BufferedWriter writer = new BufferedWriter(fstream);
+                for (String line:word_count){
+                    writer.write(line + "\n");
+                }
+                writer.close();
+            }catch (Exception e){
+                System.err.println("Error while writing to file: " +
+                        e.getMessage());
+            }
+        } else if (mode.equals("w")){
+            BufferedWriter writer = new BufferedWriter(new FileWriter(filename));
+            for (String line:word_count){
+                writer.write(line + "\n");
+            }
+            writer.close();
         }
-        writer.close();
+
     }
 
     public static void main(String[] args) throws IOException {
@@ -113,18 +126,50 @@ public class Slave{
             File split_file = new File(args[1]);
             String num = args[1].replaceAll("[^\\d]", "");
             File map_directory = new File(new File(split_file.getParent()).getParent() + "/maps");
-            System.out.println(map_directory);
             if (!map_directory.exists()){
                 boolean result = map_directory.mkdir();
                 if (!result){
                     System.out.println("Something goes wrong when creating maps folder");
                 } else {
                     ArrayList<String> words_count = Slave.words_count(split_file.toString());
-                    write_file(words_count, map_directory + "/UM" + num + ".txt" );
+                    write_file(words_count, map_directory + "/UM" + num + ".txt", "w");
                 }
             } else {
                 ArrayList<String> words_count = Slave.words_count(split_file.toString());
-                write_file(words_count, map_directory + "/UM" + num + ".txt" );
+                write_file(words_count, map_directory + "/UM" + num + ".txt", "w");
+            }
+        }else if (args[0].equals("1")){
+            ArrayList<String> hostnames = read_file("/tmp/acamara/hostnames.txt");
+            int nb_slaves = hostnames.size();
+            File shuffle_directory = new File("/tmp/acamara/shuffle");
+            if (!shuffle_directory.exists()){
+                boolean result = shuffle_directory.mkdir();
+                if (!result){
+                    System.out.println("Something goes wrong when creating shuffle folder");
+                } else {
+                    for (String file: Master.list_directory("/tmp/acamara/maps")){
+                        ArrayList<String[]> keys_values = tokenize(read_file(file));
+                        for (String[] key_value:keys_values){
+                            int hash_key = key_value[0].hashCode();
+                            int compute_slave = hash_key%nb_slaves;
+                            write_file(Arrays.asList(key_value[0] + " " + key_value[1]),
+                                    "/tmp/acamara/shuffle" + "/" + hash_key + "_" + compute_slave + ".txt",
+                                    "a");
+                        }
+                    }
+
+                }
+            } else {
+                for (String file: Master.list_directory("/tmp/acamara/maps")){
+                    ArrayList<String[]> keys_values = tokenize(read_file(file));
+                    for (String[] key_value:keys_values){
+                        int hash_key = key_value[0].hashCode();
+                        int compute_slave = hash_key%nb_slaves;
+                        write_file(Arrays.asList(key_value[0] + " " + key_value[1]),
+                                "/tmp/acamara/shuffle" + "/" + hash_key + "_" + compute_slave + ".txt",
+                                "a");
+                    }
+                }
             }
         }
 
