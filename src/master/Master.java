@@ -138,9 +138,10 @@ public class Master {
         for (String slave:slaves)
             run_shuffle.add("ssh acamara@" + slave + " java -jar /tmp/acamara/job.jar 1 ");
 
+        assert hostnames != null;
         for (String slave:hostnames)
             run_reduce.add("ssh acamara@" + slave + " java -jar /tmp/acamara/job.jar 2 ");
-        
+
         // Apply health checker
         List<Boolean> returnValue = Deploy.launch_actions_with_return(health_checks);
 
@@ -164,19 +165,31 @@ public class Master {
         }
 
         // Map
-        assert hostnames != null;
+        long start_map_time = System.currentTimeMillis();
         Deploy.deploy(hostnames,
                 "/home/axel/IdeaProjects/mapreduce-from-scratch/jar/job.jar", "/tmp/acamara/");
         Deploy.launch_actions_without_return(run_map);
         System.out.println("MAP FINISHED");
+        long end_map_time = System.currentTimeMillis();
+        long total_map_time = end_map_time - start_map_time;
+        System.out.println(String.format("map time: %d", total_map_time/1000));
 
-        // reduce
+        // shuffle
+        long start_shuffle_time = System.currentTimeMillis();
         Deploy.launch_actions_without_return(copy_hostnames_file);
         Deploy.launch_actions_without_return(run_shuffle);
         System.out.println("SHUFFLE FINISHED");
+        long end_shuffle_time = System.currentTimeMillis();
+        long total_shuffle_time = end_shuffle_time - start_shuffle_time;
+        System.out.println(String.format("shuffle time: %d", total_shuffle_time/1000));
 
+        // reduce
+        long start_reduce_time = System.currentTimeMillis();
         Deploy.launch_actions_without_return(run_reduce);
         System.out.println("REDUCE FINISHED");
+        long end_reduce_time = System.currentTimeMillis();
+        long total_reduce_time = end_reduce_time - start_reduce_time;
+        System.out.println(String.format("reduce time: %d", total_reduce_time/1000));
     }
 }
 
