@@ -119,10 +119,12 @@ public class Master {
         ArrayList<String> run_copy = new ArrayList<>();
         ArrayList<String> run_map = new ArrayList<>();
         ArrayList<String> run_shuffle = new ArrayList<>();
+        ArrayList<String> run_reduce = new ArrayList<>();
         ArrayList<String> copy_hostnames_file = new ArrayList<>();
         Random rand = new Random();
 
         for (String file:files){
+            assert hostnames != null;
             String slave = hostnames.get(rand.nextInt(hostnames.size()));
             slaves.add(slave);
             health_checks.add("ssh -o StrictHostKeyChecking=no acamara@" + slave + " hostname");
@@ -131,10 +133,14 @@ public class Master {
             check_dir.add("ssh acamara@" + slave + " ls " + args[2]);
             run_map.add("ssh acamara@" + slave + " java -jar /tmp/acamara/job.jar 0 " + file);
             copy_hostnames_file.add("scp " + args[0] + " acamara@" + slave + ":/tmp/acamara");
+
         }
-        for (String slave:slaves){
+        for (String slave:slaves)
             run_shuffle.add("ssh acamara@" + slave + " java -jar /tmp/acamara/job.jar 1 ");
-        }
+
+        for (String slave:hostnames)
+            run_reduce.add("ssh acamara@" + slave + " java -jar /tmp/acamara/job.jar 2 ");
+        
         // Apply health checker
         List<Boolean> returnValue = Deploy.launch_actions_with_return(health_checks);
 
@@ -167,6 +173,9 @@ public class Master {
         // reduce
         Deploy.launch_actions_without_return(copy_hostnames_file);
         Deploy.launch_actions_without_return(run_shuffle);
+        System.out.println("SHUFFLE FINISHED");
+
+        Deploy.launch_actions_without_return(run_reduce);
         System.out.println("REDUCE FINISHED");
     }
 }

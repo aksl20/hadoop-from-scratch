@@ -36,7 +36,7 @@ public class Slave{
         return tokenize_corpus;
     }
 
-    public static ArrayList<String> words_count(String filename){
+    public static ArrayList<String> transform_key_value(String filename){
         // Function for the question 1
         ArrayList<String> lines = Slave.read_file(filename);
         ArrayList<String[]> lines_tokenized = Slave.tokenize(lines);
@@ -46,6 +46,25 @@ public class Slave{
             for (String word:line_tokenized) {
                 if (!word.isEmpty()){
                     words_count.add(word + " 1.0");
+                }
+            }
+        }
+        return words_count;
+    }
+
+    public static HashMap<String, Double> words_count(String filename){
+        // Function for the question 1
+        ArrayList<String> lines = read_file(filename);
+        ArrayList<String[]> lines_tokenized = tokenize(lines);
+        HashMap<String, Double> words_count = new HashMap<>();
+
+        for (String[] line_tokenized: lines_tokenized) {
+            String word = line_tokenized[0];
+            if (!word.isEmpty()){
+                if (words_count.get(word) == null) {
+                    words_count.put(word, 1.0);
+                } else {
+                    words_count.put(word, words_count.get(word)+1);
                 }
             }
         }
@@ -123,12 +142,11 @@ public class Slave{
     }
 
     public static void map(String src_file, String map_file) throws IOException {
-        ArrayList<String> words_count = Slave.words_count(src_file);
+        ArrayList<String> words_count = Slave.transform_key_value(src_file);
         write_file(words_count, map_file, "w");
     }
 
     public static void shuffle(String file, ArrayList<String> hostnames) throws IOException, InterruptedException {
-        ArrayList<String> send_heys_to_good_slave = new ArrayList<>();
         String current_host = InetAddress.getLocalHost().getHostName();
         int nb_slaves = hostnames.size();
 
@@ -156,6 +174,23 @@ public class Slave{
         }
     }
 
+    public static void reduce(String reduce_directory, String shuffle_directory) throws IOException {
+        List<String> files = Master.list_directory(shuffle_directory);
+        HashMap<String, Double> words_count = new HashMap<>();
+
+        for (String file:files) {
+            words_count(file).forEach(
+                    (key, value) -> words_count.merge(key, value, Double::sum)
+            );
+        }
+        for (Entry<String, Double> key_value:words_count.entrySet()){
+            int hash = key_value.getKey().hashCode();
+            File reduce_file = new File(reduce_directory + "/" + hash + ".txt");
+            write_file(Collections.singletonList(key_value.getKey() + " " + key_value.getValue()),
+                                                    reduce_file.toString(), "w");
+        }
+    }
+
     public static void main(String[] args) throws IOException, InterruptedException {
         if (args[0].equals("0")){
             File split_file = new File(args[1]);
@@ -171,7 +206,7 @@ public class Slave{
             } else {
                 map(split_file.toString(), map_directory + "/UM" + num + ".txt");
             }
-        }else if (args[0].equals("1")){
+        } else if (args[0].equals("1")){
             ArrayList<String> hostnames = read_file("/tmp/acamara/hostnames.txt");
             ArrayList<String> health_checks = new ArrayList<>();
             assert hostnames != null;
@@ -191,6 +226,19 @@ public class Slave{
                 for (String file: Master.list_directory("/tmp/acamara/maps")){
                     shuffle(file, hostnames);
                 }
+            }
+        } else if (args[0].equals("2")){
+            File reduce_directory = new File("/tmp/acamara/reduce");
+            File shuffle_directory = new File("/tmp/acamara/shuffle");
+            if (!reduce_directory.exists()){
+                boolean result = reduce_directory.mkdir();
+                if (!result){
+                    System.out.println("Something goes wrong when creating reduce folder");
+                } else {
+                    reduce(reduce_directory.toString(), shuffle_directory.toString());
+                }
+            } else {
+                reduce(reduce_directory.toString(), shuffle_directory.toString());
             }
         }
 
