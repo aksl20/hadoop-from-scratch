@@ -1,0 +1,61 @@
+version: '3.1'
+
+services:
+  jupyter:
+    build:
+      context: ./jupyter
+      args:
+        http_proxy:
+        https_proxy:
+        ftp_proxy:
+    image: master-jupyter
+    container_name: master
+    hostname: master
+    ports:
+      - "10000:8888"
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+    volumes:
+      - jupyter-work:/home/jovyan/work
+
+  worker-1:
+    build:
+      context: ./worker
+      args:
+        http_proxy:
+        https_proxy:
+        ftp_proxy:
+    image: worker
+    container_name: worker-1
+    hostname: worker-1
+    environment:
+      - SSH_ENABLE_ROOT=true
+
+  worker-2:
+    build:
+      context: ./worker
+      args:
+        http_proxy:
+        https_proxy:
+        ftp_proxy:
+    image: worker
+    container_name: worker-2
+    hostname: worker-2
+    environment:
+      - SSH_ENABLE_ROOT=true
+
+  worker-3:
+    build:
+      context: ./worker
+      args:
+        http_proxy:
+        https_proxy:
+        ftp_proxy:
+    image: worker
+    container_name: worker-3
+    hostname: worker-3
+    environment:
+      - SSH_ENABLE_ROOT=true
+
+volumes:
+  jupyter-work:
