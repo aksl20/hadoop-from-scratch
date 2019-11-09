@@ -1,24 +1,21 @@
-FROM openjdk:13-alpine
+FROM debian
 
-RUN apk update && \
-    apk add bash git openssh rsync augeas shadow && \
-    deluser $(getent passwd 33 | cut -d: -f1) && \
-    delgroup $(getent group 33 | cut -d: -f1) 2>/dev/null || true && \
-    mkdir -p ~root/.ssh /etc/authorized_keys && chmod 700 ~root/.ssh/ && \
-    augtool 'set /files/etc/ssh/sshd_config/AuthorizedKeysFile ".ssh/authorized_keys /etc/authorized_keys/%u"' && \
-    echo -e "Port 22\n" >> /etc/ssh/sshd_config && \
-    cp -a /etc/ssh /etc/ssh.cache && \
-    rm -rf /var/cache/apk/*
+RUN apt-get -y update && \
+    apt-get install --no-install-recommends -y \
+      curl \
+      openjdk-11-jre-headless \
+      ca-certificates-java \
+      ssh \
+      git && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN mkdir /var/run/sshd
 
 EXPOSE 22
-
-COPY entry.sh /entry.sh
-RUN chmod +x /entry.sh
-
-ENTRYPOINT ["/entry.sh"]
 
 COPY ssh/id_rsa /root/.ssh/
 COPY ssh/id_rsa.pub /root/.ssh/
 COPY ssh/public-keys /root/.ssh/authorized_keys
 
-CMD ["/usr/sbin/sshd", "-D", "-e", "-f", "/etc/ssh/sshd_config"]
+CMD ["/usr/sbin/sshd", "-D"]
