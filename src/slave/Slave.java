@@ -1,5 +1,6 @@
 package slave;
 
+import master.Deploy;
 import master.Master;
 
 import java.io.BufferedWriter;
@@ -10,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.Map.Entry;
+import java.net.InetAddress;
 
 import static java.util.stream.Collectors.*;
 
@@ -118,10 +120,43 @@ public class Slave{
             }
             writer.close();
         }
-
     }
 
-    public static void main(String[] args) throws IOException {
+    public static void map(String src_file, String map_file) throws IOException {
+        ArrayList<String> words_count = Slave.words_count(src_file);
+        write_file(words_count, map_file, "w");
+    }
+
+    public static void shuffle(String file, ArrayList<String> hostnames) throws IOException, InterruptedException {
+        ArrayList<String> send_heys_to_good_slave = new ArrayList<>();
+        String current_host = InetAddress.getLocalHost().getHostName();
+        int nb_slaves = hostnames.size();
+
+        ArrayList<String[]> keys_values = tokenize(Objects.requireNonNull(read_file(file)));
+        for (String[] key_value:keys_values){
+            int hash_key = key_value[0].hashCode();
+            int compute_slave = hash_key%nb_slaves;
+            if (!hostnames.get(compute_slave).equals(current_host)){
+                File shuffle_file = new File ("/tmp/acamara/shuffle" + "/" + String.format("%d_%d_%d.txt",
+                                                                                            hash_key,
+                                                                                            compute_slave,
+                                                                                            current_host.hashCode()));
+                write_file(Collections.singletonList(key_value[0] + " " + key_value[1]),
+                        shuffle_file.toString(),
+                        "a");
+                Deploy.deploy(Collections.singletonList(hostnames.get(compute_slave)),
+                        shuffle_file.toString(), "/tmp/acamara/shuffle");
+                shuffle_file.delete();
+            } else {
+                File shuffle_file = new File ("/tmp/acamara/shuffle" + "/" + hash_key + "_" + compute_slave + ".txt");
+                write_file(Collections.singletonList(key_value[0] + " " + key_value[1]),
+                         shuffle_file.toString(),
+                        "a");
+            }
+        }
+    }
+
+    public static void main(String[] args) throws IOException, InterruptedException {
         if (args[0].equals("0")){
             File split_file = new File(args[1]);
             String num = args[1].replaceAll("[^\\d]", "");
@@ -131,16 +166,17 @@ public class Slave{
                 if (!result){
                     System.out.println("Something goes wrong when creating maps folder");
                 } else {
-                    ArrayList<String> words_count = Slave.words_count(split_file.toString());
-                    write_file(words_count, map_directory + "/UM" + num + ".txt", "w");
+                    map(split_file.toString(), map_directory + "/UM" + num + ".txt");
                 }
             } else {
-                ArrayList<String> words_count = Slave.words_count(split_file.toString());
-                write_file(words_count, map_directory + "/UM" + num + ".txt", "w");
+                map(split_file.toString(), map_directory + "/UM" + num + ".txt");
             }
         }else if (args[0].equals("1")){
             ArrayList<String> hostnames = read_file("/tmp/acamara/hostnames.txt");
-            int nb_slaves = hostnames.size();
+            ArrayList<String> health_checks = new ArrayList<>();
+            assert hostnames != null;
+            for (String hostname : hostnames)
+                health_checks.add("ssh -o StrictHostKeyChecking=no acamara@" + hostname + " hostname");
             File shuffle_directory = new File("/tmp/acamara/shuffle");
             if (!shuffle_directory.exists()){
                 boolean result = shuffle_directory.mkdir();
@@ -148,27 +184,12 @@ public class Slave{
                     System.out.println("Something goes wrong when creating shuffle folder");
                 } else {
                     for (String file: Master.list_directory("/tmp/acamara/maps")){
-                        ArrayList<String[]> keys_values = tokenize(read_file(file));
-                        for (String[] key_value:keys_values){
-                            int hash_key = key_value[0].hashCode();
-                            int compute_slave = hash_key%nb_slaves;
-                            write_file(Arrays.asList(key_value[0] + " " + key_value[1]),
-                                    "/tmp/acamara/shuffle" + "/" + hash_key + "_" + compute_slave + ".txt",
-                                    "a");
-                        }
+                        shuffle(file, hostnames);
                     }
-
                 }
             } else {
                 for (String file: Master.list_directory("/tmp/acamara/maps")){
-                    ArrayList<String[]> keys_values = tokenize(read_file(file));
-                    for (String[] key_value:keys_values){
-                        int hash_key = key_value[0].hashCode();
-                        int compute_slave = hash_key%nb_slaves;
-                        write_file(Arrays.asList(key_value[0] + " " + key_value[1]),
-                                "/tmp/acamara/shuffle" + "/" + hash_key + "_" + compute_slave + ".txt",
-                                "a");
-                    }
+                    shuffle(file, hostnames);
                 }
             }
         }

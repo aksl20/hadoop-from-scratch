@@ -33,8 +33,10 @@ public class Deploy {
 
     public static void launch_actions_without_return(ArrayList<String> actions) throws InterruptedException {
         ArrayList<Master.ProcessLauncher> launchers = new ArrayList<>();
-        for (String command : actions)
+        for (String command : actions) {
             launchers.add(new Master.ProcessLauncher(command, 2));
+            System.out.println(command);
+        }
 
         launchers.forEach(Master.ProcessLauncher::launch_process);
 
@@ -54,8 +56,7 @@ public class Deploy {
         return returnValue;
     }
 
-    public static Boolean deploy(String path_to_hostnames, String host_path, String remote_path) throws InterruptedException {
-        ArrayList<String> hostnames = Deploy.read_file(path_to_hostnames);
+    public static Boolean deploy(List<String> hostnames, String host_path, String remote_path) throws InterruptedException {
         ArrayList<String> health_checks = new ArrayList<>();
         ArrayList<String> check_dir = new ArrayList<>();
         ArrayList<String> create_dirs = new ArrayList<>();

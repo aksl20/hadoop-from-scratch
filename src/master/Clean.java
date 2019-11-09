@@ -66,7 +66,6 @@ public class Clean {
             check_remove.add("ssh acamara@" + hostname + " ls /tmp/acamara");
         }
 
-
         // Apply health checker
         List<Boolean> returnValue = launch_actions_with_return(remove_folder);
         System.out.println(returnValue);

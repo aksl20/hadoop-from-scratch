@@ -158,7 +158,8 @@ public class Master {
         }
 
         // Map
-        Deploy.deploy("/home/axel/IdeaProjects/mapreduce-from-scratch/data/hostnames.txt",
+        assert hostnames != null;
+        Deploy.deploy(hostnames,
                 "/home/axel/IdeaProjects/mapreduce-from-scratch/jar/job.jar", "/tmp/acamara/");
         Deploy.launch_actions_without_return(run_map);
         System.out.println("MAP FINISHED");
