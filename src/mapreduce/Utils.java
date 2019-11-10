@@ -30,7 +30,7 @@ class Utils {
         ArrayList<String[]> tokenize_corpus = new ArrayList<>();
         for (String line : lines) {
             // removes punctuations
-            line = line.replaceAll("\\p{Punct}", "").toLowerCase().trim();
+            line = line.toLowerCase().trim();
 
             tokenize_corpus.add(line.split(" "));
         }

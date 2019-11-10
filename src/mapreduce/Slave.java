@@ -95,7 +95,7 @@ public class Slave{
 
     private static void map(String src_file, String map_file) throws IOException {
         ArrayList<String> words_count = Slave.transform_key_value(src_file);
-        Utils.write_file(words_count, map_file, "w");
+        Utils.write_file(words_count, map_file, "a");
     }
 
     private static void shuffle(String file, ArrayList<String> hostnames) throws IOException, InterruptedException {
