@@ -61,7 +61,7 @@ public class Master {
         // Map
         double start_map_time = System.currentTimeMillis();
         Deploy.deploy(hostnames,
-                "/home/axel/IdeaProjects/mapreduce-from-scratch/jar/job.jar", "/tmp/root/");
+                "jar/job.jar", "/tmp/root/");
         Utils.launch_actions_without_return(run_map);
         System.out.println("MAP FINISHED");
         double end_map_time = System.currentTimeMillis();
