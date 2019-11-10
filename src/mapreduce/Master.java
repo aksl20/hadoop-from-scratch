@@ -21,20 +21,20 @@ public class Master {
             assert hostnames != null;
             String slave = hostnames.get(rand.nextInt(hostnames.size()));
             slaves.add(slave);
-            health_checks.add("ssh -o StrictHostKeyChecking=no acamara@" + slave + " hostname");
-            create_dirs.add("ssh acamara@" + slave + " if test ! -d " + args[2] + "; then mkdir -p " + args[2] + "; fi");
-            run_copy.add("scp -r " + file + " acamara@" + slave + ":" + args[2]);
-            check_dir.add("ssh acamara@" + slave + " ls " + args[2]);
-            run_map.add("ssh acamara@" + slave + " java -jar /tmp/acamara/job.jar 0 " + file);
-            copy_hostnames_file.add("scp " + args[0] + " acamara@" + slave + ":/tmp/acamara");
+            health_checks.add("ssh -o StrictHostKeyChecking=no root@" + slave + " hostname");
+            create_dirs.add("ssh root@" + slave + " if test ! -d " + args[2] + "; then mkdir -p " + args[2] + "; fi");
+            run_copy.add("scp -r " + file + " root@" + slave + ":" + args[2]);
+            check_dir.add("ssh root@" + slave + " ls " + args[2]);
+            run_map.add("ssh root@" + slave + " java -jar /tmp/root/job.jar 0 " + file);
+            copy_hostnames_file.add("scp " + args[0] + " root@" + slave + ":/tmp/root");
 
         }
         for (String slave:slaves)
-            run_shuffle.add("ssh acamara@" + slave + " java -jar /tmp/acamara/job.jar 1 ");
+            run_shuffle.add("ssh root@" + slave + " java -jar /tmp/root/job.jar 1 ");
 
         assert hostnames != null;
         for (String slave:hostnames)
-            run_reduce.add("ssh acamara@" + slave + " java -jar /tmp/acamara/job.jar 2 ");
+            run_reduce.add("ssh root@" + slave + " java -jar /tmp/root/job.jar 2 ");
 
         // Apply health checker
         List<Boolean> returnValue = Utils.launch_actions_with_return(health_checks);
@@ -61,7 +61,7 @@ public class Master {
         // Map
         double start_map_time = System.currentTimeMillis();
         Deploy.deploy(hostnames,
-                "/home/axel/IdeaProjects/mapreduce-from-scratch/jar/job.jar", "/tmp/acamara/");
+                "/home/axel/IdeaProjects/mapreduce-from-scratch/jar/job.jar", "/tmp/root/");
         Utils.launch_actions_without_return(run_map);
         System.out.println("MAP FINISHED");
         double end_map_time = System.currentTimeMillis();

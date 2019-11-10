@@ -107,7 +107,7 @@ public class Slave{
             int hash_key = key_value[0].hashCode();
             int compute_slave = hash_key%nb_slaves;
             if (!hostnames.get(compute_slave).equals(current_host)){
-                File shuffle_file = new File ("/tmp/acamara/shuffle" + "/" + String.format("%d_%d_%d.txt",
+                File shuffle_file = new File ("/tmp/root/shuffle" + "/" + String.format("%d_%d_%d.txt",
                                                                                             hash_key,
                                                                                             compute_slave,
                                                                                             current_host.hashCode()));
@@ -115,10 +115,10 @@ public class Slave{
                         shuffle_file.toString(),
                         "a");
                 Deploy.deploy(Collections.singletonList(hostnames.get(compute_slave)),
-                        shuffle_file.toString(), "/tmp/acamara/shuffle");
+                        shuffle_file.toString(), "/tmp/root/shuffle");
                 shuffle_file.delete();
             } else {
-                File shuffle_file = new File ("/tmp/acamara/shuffle" + "/" + hash_key + "_" + compute_slave + ".txt");
+                File shuffle_file = new File ("/tmp/root/shuffle" + "/" + hash_key + "_" + compute_slave + ".txt");
                 Utils.write_file(Collections.singletonList(key_value[0] + " " + key_value[1]),
                          shuffle_file.toString(),
                         "a");
@@ -159,29 +159,29 @@ public class Slave{
                 map(split_file.toString(), map_directory + "/UM" + num + ".txt");
             }
         } else if (args[0].equals("1")){
-            ArrayList<String> hostnames = Utils.read_file("/tmp/acamara/hostnames.txt");
+            ArrayList<String> hostnames = Utils.read_file("/tmp/root/hostnames.txt");
             ArrayList<String> health_checks = new ArrayList<>();
             assert hostnames != null;
             for (String hostname : hostnames)
-                health_checks.add("ssh -o StrictHostKeyChecking=no acamara@" + hostname + " hostname");
-            File shuffle_directory = new File("/tmp/acamara/shuffle");
+                health_checks.add("ssh -o StrictHostKeyChecking=no root@" + hostname + " hostname");
+            File shuffle_directory = new File("/tmp/root/shuffle");
             if (!shuffle_directory.exists()){
                 boolean result = shuffle_directory.mkdir();
                 if (!result){
                     System.out.println("Something goes wrong when creating shuffle folder");
                 } else {
-                    for (String file: Utils.list_directory("/tmp/acamara/maps")){
+                    for (String file: Utils.list_directory("/tmp/root/maps")){
                         shuffle(file, hostnames);
                     }
                 }
             } else {
-                for (String file: Utils.list_directory("/tmp/acamara/maps")){
+                for (String file: Utils.list_directory("/tmp/root/maps")){
                     shuffle(file, hostnames);
                 }
             }
         } else if (args[0].equals("2")){
-            File reduce_directory = new File("/tmp/acamara/reduce");
-            File shuffle_directory = new File("/tmp/acamara/shuffle");
+            File reduce_directory = new File("/tmp/root/reduce");
+            File shuffle_directory = new File("/tmp/root/shuffle");
             if (!reduce_directory.exists()){
                 boolean result = reduce_directory.mkdir();
                 if (!result){

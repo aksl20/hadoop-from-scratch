@@ -13,10 +13,10 @@ public class Deploy {
         // Create list of commands for each machines
         assert hostnames != null;
         for (String hostname : hostnames) {
-            health_checks.add("ssh -o StrictHostKeyChecking=no acamara@" + hostname + " hostname");
-            create_dirs.add("ssh acamara@" + hostname + " if test ! -d " + remote_path + "; then mkdir -p " + remote_path + "; fi");
-            check_dir.add("ssh acamara@" + hostname + " ls /tmp/acamara");
-            run_copy.add("scp -r " + host_path + " acamara@" + hostname + ":" + remote_path);
+            health_checks.add("ssh -o StrictHostKeyChecking=no root@" + hostname + " hostname");
+            create_dirs.add("ssh root@" + hostname + " if test ! -d " + remote_path + "; then mkdir -p " + remote_path + "; fi");
+            check_dir.add("ssh root@" + hostname + " ls /tmp/root");
+            run_copy.add("scp -r " + host_path + " root@" + hostname + ":" + remote_path);
         }
 
         // Apply health checker
