@@ -12,8 +12,8 @@ public class Clean {
         // Create list of commands for each machines
         assert hostnames != null;
         for (String hostname : hostnames){
-            remove_folder.add("ssh acamara@" + hostname + " rm -rf /tmp/acamara");
-            check_remove.add("ssh acamara@" + hostname + " ls /tmp/acamara");
+            remove_folder.add("ssh root@" + hostname + " rm -rf /tmp/root");
+            check_remove.add("ssh root@" + hostname + " ls /tmp/root");
         }
 
         // Apply health checker
