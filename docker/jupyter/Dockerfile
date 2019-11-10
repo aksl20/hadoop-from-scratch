@@ -8,6 +8,8 @@ RUN apt-get -y update && \
       openjdk-11-jre-headless \
       ca-certificates-java \
       ssh \
+      dnsutils \
+      iputils-ping \
       git && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
@@ -19,6 +21,7 @@ WORKDIR /home/jovyan/work
 RUN git clone https://github.com/SpencerPark/IJava.git && \
     cd IJava/ && \
     chmod u+x gradlew && ./gradlew installKernel
+ADD kernel.json /home/jovyan/.local/share/jupyter/kernels/java/kernel.json
 
 # download project
 RUN git clone https://github.com/aksl20/hadoop-from-scratch.git

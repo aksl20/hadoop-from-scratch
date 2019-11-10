@@ -30,6 +30,7 @@ services:
     hostname: worker-1
     environment:
       - SSH_ENABLE_ROOT=true
+      - NB_USER=jovyan
 
   worker-2:
     build:
@@ -43,6 +44,7 @@ services:
     hostname: worker-2
     environment:
       - SSH_ENABLE_ROOT=true
+      - NB_USER=jovyan
 
   worker-3:
     build:
@@ -56,6 +58,7 @@ services:
     hostname: worker-3
     environment:
       - SSH_ENABLE_ROOT=true
+      - NB_USER=jovyan
 
 volumes:
   jupyter-work:
