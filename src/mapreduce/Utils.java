@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class Utils {
+class Utils {
 
 
     static ArrayList<String> read_file(String filename) {
@@ -26,7 +26,7 @@ public class Utils {
         return lines;
     }
 
-    public static ArrayList<String[]> tokenize(ArrayList<String> lines) {
+    static ArrayList<String[]> tokenize(ArrayList<String> lines) {
         ArrayList<String[]> tokenize_corpus = new ArrayList<>();
         for (String line : lines) {
             // removes punctuations
@@ -45,7 +45,7 @@ public class Utils {
             System.out.println(command);
         }
 
-        launchers.forEach(ProcessLauncher::launch_process);
+        launchers.parallelStream().forEach(ProcessLauncher::launch_process);
 
         for (ProcessLauncher launcher : launchers)
             launcher.input_stream.join();
@@ -63,7 +63,7 @@ public class Utils {
         return returnValue;
     }
 
-    public static List<String> list_directory(String path_to_directory){
+    static List<String> list_directory(String path_to_directory){
         try (Stream<Path> walk = Files.walk(Paths.get(path_to_directory))) {
 
             return walk.filter(Files::isRegularFile)
@@ -74,7 +74,7 @@ public class Utils {
         return Collections.emptyList();
     }
 
-    public static void write_file(List<String> word_count, String filename, String mode) throws IOException {
+    static void write_file(List<String> word_count, String filename, String mode) throws IOException {
         if (mode.equals("a")){
             try{
                 FileWriter fstream = new FileWriter(filename,true);
