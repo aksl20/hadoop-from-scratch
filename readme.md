@@ -29,7 +29,7 @@ $ docker exec -it master bash
 $ jupyter notebook list
 ```
 
-You can copy the token for using it when you will access to the platform with this link [notebook](http://localhost:1000)
+You can copy the token for using it when you will access to the platform with this link [notebook](http://localhost:10000)
 
 ### Connect to the platform
 
